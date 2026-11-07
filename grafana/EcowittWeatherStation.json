@@ -1248,7 +1248,7 @@
         "defaults": {
           "color": {
             "mode": "fixed",
-            "fixedColor": "blue"
+            "fixedColor": "light-blue"
           },
           "custom": {
             "axisBorderShow": false,
@@ -1300,10 +1300,46 @@
           "decimals": 1,
           "min": 0
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "mm/h"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-blue"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
-        "h": 8,
+        "h": 10,
         "w": 16,
         "x": 0,
         "y": 25
@@ -1314,11 +1350,11 @@
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": false
+          "showLegend": true
         },
         "tooltip": {
           "hideZeros": false,
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
@@ -1332,116 +1368,25 @@
           "editorMode": "code",
           "expr": "increase(ecowitt_rain{sensor=\"yrain_piezo\"}[$__interval])",
           "interval": "1h",
-          "legendFormat": "Rain",
+          "legendFormat": "Rainfall",
           "range": true,
           "refId": "A"
-        }
-      ],
-      "title": "Rainfall",
-      "type": "timeseries",
-      "description": "Rain per interval (1 h minimum), computed as increase() of the station's yearly total, which matches its daily totals.",
-      "interval": "1h"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "blue"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 25,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "mm/h",
-          "decimals": 1,
-          "min": 0
         },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 16,
-        "x": 0,
-        "y": 33
-      },
-      "id": 76,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.0.0+security-01",
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "ecowitt_rain{sensor=\"rrain_piezo\"}",
-          "legendFormat": "Rain rate",
+          "expr": "max_over_time(ecowitt_rain{sensor=\"rrain_piezo\"}[$__interval])",
+          "legendFormat": "Rain rate (peak)",
           "range": true,
-          "refId": "A"
+          "refId": "B"
         }
       ],
-      "title": "Rain rate",
+      "title": "Rainfall",
       "type": "timeseries",
-      "description": "Rain rate from the WS90 piezo sensor."
+      "description": "Bars (left axis): rain per bar (1 h at short time ranges, wider on long ones), from increase() of the station's yearly total, which matches its daily totals. Line (right axis): peak rain rate in each plotted interval."
     },
     {
       "datasource": {
@@ -1469,7 +1414,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 15,
+        "h": 10,
         "w": 8,
         "x": 16,
         "y": 25
@@ -1576,7 +1521,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 40
+        "y": 35
       },
       "id": 31,
       "panels": [],
@@ -1648,7 +1593,7 @@
         "h": 8,
         "w": 17,
         "x": 0,
-        "y": 41
+        "y": 36
       },
       "id": 25,
       "options": {
@@ -1823,7 +1768,7 @@
         "h": 8,
         "w": 7,
         "x": 17,
-        "y": 41
+        "y": 36
       },
       "id": 59,
       "options": {
@@ -1998,7 +1943,7 @@
         "h": 9,
         "w": 17,
         "x": 0,
-        "y": 49
+        "y": 44
       },
       "id": 43,
       "options": {
@@ -2169,7 +2114,7 @@
         "h": 9,
         "w": 7,
         "x": 17,
-        "y": 49
+        "y": 44
       },
       "id": 50,
       "options": {
@@ -2217,7 +2162,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 58
+        "y": 53
       },
       "id": 30,
       "panels": [],
@@ -2333,7 +2278,7 @@
         "h": 7,
         "w": 5,
         "x": 0,
-        "y": 59
+        "y": 54
       },
       "id": 29,
       "options": {
@@ -2396,7 +2341,7 @@
         "h": 7,
         "w": 19,
         "x": 5,
-        "y": 59
+        "y": 54
       },
       "id": 27,
       "options": {
@@ -2474,7 +2419,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 69
+        "y": 64
       },
       "id": 47,
       "panels": [],
@@ -2582,7 +2527,7 @@
         "h": 6,
         "w": 18,
         "x": 0,
-        "y": 70
+        "y": 65
       },
       "id": 74,
       "options": {
@@ -2752,7 +2697,7 @@
         "h": 6,
         "w": 6,
         "x": 18,
-        "y": 70
+        "y": 65
       },
       "id": 48,
       "options": {
@@ -2817,7 +2762,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 76
+        "y": 71
       },
       "id": 70,
       "panels": [],
@@ -2836,7 +2781,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 77
+        "y": 72
       },
       "interval": "1m",
       "fieldConfig": {
