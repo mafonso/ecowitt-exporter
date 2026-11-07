@@ -250,7 +250,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "ecowitt_humidity{container=\"ecowitt-exporter\", sensor=\"outdoor\"}",
+          "expr": "ecowitt_humidity{sensor=\"outdoor\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
@@ -322,7 +322,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "ecowitt_barom{container=\"ecowitt-exporter\", sensor=\"relative\"}",
+          "expr": "ecowitt_barom{sensor=\"relative\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
@@ -359,7 +359,7 @@
               }
             ]
           },
-          "unit": "velocitymph"
+          "unit": "kmh"
         },
         "overrides": []
       },
@@ -396,7 +396,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "ecowitt_windspeed{container=\"ecowitt-exporter\", sensor=\"windspeed\"}",
+          "expr": "ecowitt_windspeed{sensor=\"windspeed\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
@@ -416,8 +416,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "blue",
-            "mode": "fixed"
+            "mode": "thresholds"
           },
           "decimals": 1,
           "mappings": [],
@@ -425,11 +424,12 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "text",
+                "value": null
               },
               {
-                "color": "red",
-                "value": 80
+                "color": "blue",
+                "value": 0.001
               }
             ]
           },
@@ -469,18 +469,19 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "ecowitt_rain{container=\"ecowitt-exporter\", sensor=\"rate\"}",
+          "editorMode": "code",
+          "expr": "ecowitt_rain{sensor=\"rrain_piezo\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "__auto",
+          "legendFormat": "Rain rate",
           "range": true,
           "refId": "A",
           "useBackend": false
         }
       ],
-      "title": "Rainfall",
-      "type": "stat"
+      "title": "Rain rate",
+      "type": "stat",
+      "description": "Current rain rate from the WS90 piezo sensor. Blue while it is raining."
     },
     {
       "datasource": {
@@ -559,7 +560,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "ecowitt_solarradiation{container=\"ecowitt-exporter\"}",
+          "expr": "ecowitt_solarradiation",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
@@ -641,7 +642,7 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "ecowitt_temp{container=\"ecowitt-exporter\", sensor=\"outdoor\"}",
+          "expr": "ecowitt_temp{sensor=\"outdoor\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
@@ -714,7 +715,7 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "ecowitt_temp{container=\"ecowitt-exporter\", sensor=\"outdoor\"}",
+          "expr": "ecowitt_temp{sensor=\"outdoor\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
@@ -754,7 +755,7 @@
               }
             ]
           },
-          "unit": "velocitymph"
+          "unit": "kmh"
         },
         "overrides": []
       },
@@ -787,7 +788,7 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "ecowitt_windspeed{container=\"ecowitt-exporter\", sensor=\"windspeed\"}",
+          "expr": "ecowitt_windspeed{sensor=\"windspeed\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
@@ -827,7 +828,7 @@
               }
             ]
           },
-          "unit": "velocitymph"
+          "unit": "kmh"
         },
         "overrides": []
       },
@@ -860,7 +861,7 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "ecowitt_windspeed{container=\"ecowitt-exporter\", sensor=\"windgust\"}",
+          "expr": "ecowitt_windspeed{sensor=\"windgust\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
@@ -1107,7 +1108,7 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "ecowitt_humidity{container=\"ecowitt-exporter\", sensor=\"outdoor\"}",
+          "expr": "ecowitt_humidity{sensor=\"outdoor\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
@@ -1246,7 +1247,8 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "blue"
           },
           "custom": {
             "axisBorderShow": false,
@@ -1254,10 +1256,10 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
-            "barAlignment": 0,
+            "barAlignment": -1,
             "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 10,
+            "drawStyle": "bars",
+            "fillOpacity": 80,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -1271,7 +1273,7 @@
             "scaleDistribution": {
               "type": "linear"
             },
-            "showPoints": "auto",
+            "showPoints": "never",
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1294,26 +1296,15 @@
               }
             ]
           },
-          "unit": "lengthmm"
+          "unit": "lengthmm",
+          "decimals": 1,
+          "min": 0
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "rate"
-            },
-            "properties": [
-              {
-                "id": "custom.drawStyle",
-                "value": "bars"
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 8,
-        "w": 17,
+        "w": 16,
         "x": 0,
         "y": 25
       },
@@ -1321,9 +1312,9 @@
       "options": {
         "legend": {
           "calcs": [],
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
         },
         "tooltip": {
           "hideZeros": false,
@@ -1338,19 +1329,119 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "ecowitt_rain{container=\"ecowitt-exporter\", sensor!~\"total|yearly\"}",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "{{sensor}}",
+          "editorMode": "code",
+          "expr": "increase(ecowitt_rain{sensor=\"yrain_piezo\"}[$__interval])",
+          "interval": "1h",
+          "legendFormat": "Rain",
           "range": true,
-          "refId": "A",
-          "useBackend": false
+          "refId": "A"
         }
       ],
       "title": "Rainfall",
-      "type": "timeseries"
+      "type": "timeseries",
+      "description": "Rain per interval (1 h minimum), computed as increase() of the station's yearly total, which matches its daily totals.",
+      "interval": "1h"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "mm/h",
+          "decimals": 1,
+          "min": 0
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 16,
+        "x": 0,
+        "y": 33
+      },
+      "id": 76,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.0+security-01",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "ecowitt_rain{sensor=\"rrain_piezo\"}",
+          "legendFormat": "Rain rate",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Rain rate",
+      "type": "timeseries",
+      "description": "Rain rate from the WS90 piezo sensor."
     },
     {
       "datasource": {
@@ -1372,14 +1463,15 @@
               }
             ]
           },
-          "unit": "lengthmm"
+          "unit": "lengthmm",
+          "decimals": 1
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 7,
-        "x": 17,
+        "h": 15,
+        "w": 8,
+        "x": 16,
         "y": 25
       },
       "id": 69,
@@ -1387,7 +1479,7 @@
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "auto",
-        "orientation": "auto",
+        "orientation": "horizontal",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
@@ -1397,25 +1489,82 @@
           "values": false
         },
         "showPercentChange": false,
-        "textMode": "auto",
+        "textMode": "value_and_name",
         "wideLayout": true
       },
       "pluginVersion": "12.0.0+security-01",
       "targets": [
         {
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "ecowitt_rain{sensor=~\"daily|event|monthly|weekly|yearly|total\"}",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "{{sensor}}",
-          "range": true,
-          "refId": "A",
-          "useBackend": false,
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
-          }
+          },
+          "editorMode": "code",
+          "expr": "ecowitt_rain{sensor=\"erain_piezo\"}",
+          "instant": true,
+          "range": false,
+          "legendFormat": "This event",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "ecowitt_rain{sensor=\"drain_piezo\"}",
+          "instant": true,
+          "range": false,
+          "legendFormat": "Today",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "ecowitt_rain{sensor=\"last24hrain_piezo\"}",
+          "instant": true,
+          "range": false,
+          "legendFormat": "Last 24 h",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "ecowitt_rain{sensor=\"wrain_piezo\"}",
+          "instant": true,
+          "range": false,
+          "legendFormat": "This week",
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "ecowitt_rain{sensor=\"mrain_piezo\"}",
+          "instant": true,
+          "range": false,
+          "legendFormat": "This month",
+          "refId": "E"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "ecowitt_rain{sensor=\"yrain_piezo\"}",
+          "instant": true,
+          "range": false,
+          "legendFormat": "This year",
+          "refId": "F"
         }
       ],
       "title": "Totals",
@@ -1427,7 +1576,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 33
+        "y": 40
       },
       "id": 31,
       "panels": [],
@@ -1491,7 +1640,7 @@
               }
             ]
           },
-          "unit": "velocitymph"
+          "unit": "kmh"
         },
         "overrides": []
       },
@@ -1499,7 +1648,7 @@
         "h": 8,
         "w": 17,
         "x": 0,
-        "y": 34
+        "y": 41
       },
       "id": 25,
       "options": {
@@ -1526,7 +1675,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "ecowitt_windspeed{container=\"ecowitt-exporter\", sensor!=\"maxdailygust\"}",
+          "expr": "ecowitt_windspeed{sensor!=\"maxdailygust\"}",
           "format": "time_series",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -1674,7 +1823,7 @@
         "h": 8,
         "w": 7,
         "x": 17,
-        "y": 34
+        "y": 41
       },
       "id": 59,
       "options": {
@@ -1697,7 +1846,7 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "ecowitt_windspeed_beaufort{container=\"ecowitt-exporter\"}",
+          "expr": "ecowitt_windspeed_beaufort",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
@@ -1849,7 +1998,7 @@
         "h": 9,
         "w": 17,
         "x": 0,
-        "y": 42
+        "y": 49
       },
       "id": 43,
       "options": {
@@ -1876,7 +2025,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "ecowitt_winddir{container=\"ecowitt-exporter\"}",
+          "expr": "ecowitt_winddir",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
@@ -1905,7 +2054,7 @@
                 "from": 337.5,
                 "result": {
                   "index": 0,
-                  "text": "↓"
+                  "text": "\u2193"
                 },
                 "to": 360
               },
@@ -1916,7 +2065,7 @@
                 "from": 292.5,
                 "result": {
                   "index": 1,
-                  "text": "↘"
+                  "text": "\u2198"
                 },
                 "to": 337.5
               },
@@ -1927,7 +2076,7 @@
                 "from": 247.5,
                 "result": {
                   "index": 2,
-                  "text": "→"
+                  "text": "\u2192"
                 },
                 "to": 292.5
               },
@@ -1938,7 +2087,7 @@
                 "from": 202.5,
                 "result": {
                   "index": 3,
-                  "text": "↗"
+                  "text": "\u2197"
                 },
                 "to": 247.5
               },
@@ -1949,7 +2098,7 @@
                 "from": 157.5,
                 "result": {
                   "index": 4,
-                  "text": "↑"
+                  "text": "\u2191"
                 },
                 "to": 202.5
               },
@@ -1960,7 +2109,7 @@
                 "from": 112.5,
                 "result": {
                   "index": 5,
-                  "text": "↖"
+                  "text": "\u2196"
                 },
                 "to": 157.5
               },
@@ -1971,7 +2120,7 @@
                 "from": 77.5,
                 "result": {
                   "index": 6,
-                  "text": "←"
+                  "text": "\u2190"
                 },
                 "to": 112.5
               },
@@ -1982,7 +2131,7 @@
                 "from": 22.5,
                 "result": {
                   "index": 7,
-                  "text": "↙"
+                  "text": "\u2199"
                 },
                 "to": 77.5
               },
@@ -1993,7 +2142,7 @@
                 "from": 0,
                 "result": {
                   "index": 8,
-                  "text": "↓"
+                  "text": "\u2193"
                 },
                 "to": 22.5
               },
@@ -2020,7 +2169,7 @@
         "h": 9,
         "w": 7,
         "x": 17,
-        "y": 42
+        "y": 49
       },
       "id": 50,
       "options": {
@@ -2050,7 +2199,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "ecowitt_winddir{container=\"ecowitt-exporter\"}",
+          "expr": "ecowitt_winddir",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -2068,7 +2217,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 51
+        "y": 58
       },
       "id": 30,
       "panels": [],
@@ -2184,7 +2333,7 @@
         "h": 7,
         "w": 5,
         "x": 0,
-        "y": 52
+        "y": 59
       },
       "id": 29,
       "options": {
@@ -2211,7 +2360,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "ecowitt_uv{container=\"ecowitt-exporter\"}",
+          "expr": "ecowitt_uv",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
@@ -2247,7 +2396,7 @@
         "h": 7,
         "w": 19,
         "x": 5,
-        "y": 52
+        "y": 59
       },
       "id": 27,
       "options": {
@@ -2279,7 +2428,7 @@
           "color": "rgba(255,0,255,0.7)"
         },
         "filterValues": {
-          "le": 1e-9
+          "le": 1e-09
         },
         "legend": {
           "show": true
@@ -2307,7 +2456,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "ecowitt_solarradiation{container=\"ecowitt-exporter\"}",
+          "expr": "ecowitt_solarradiation",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{__name__}}",
@@ -2325,795 +2474,169 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 59
-      },
-      "id": 68,
-      "panels": [],
-      "title": "Lightning",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "super-light-yellow",
-            "mode": "fixed"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "lengthmi"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 0,
-        "y": 60
-      },
-      "id": 64,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.0.0+security-01",
-      "targets": [
-        {
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "ecowitt_lightning",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          }
-        }
-      ],
-      "title": "Last strike distance",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "super-light-yellow",
-            "mode": "fixed"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "lengthmi"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 6,
-        "y": 60
-      },
-      "id": 67,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "min"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.0.0+security-01",
-      "targets": [
-        {
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "min(ecowitt_lightning{container=\"ecowitt-exporter\"})",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          }
-        }
-      ],
-      "title": "Closest strike distance",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "text"
-              },
-              {
-                "color": "super-light-yellow",
-                "value": 1
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 12,
-        "y": 60
-      },
-      "id": 65,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.0.0+security-01",
-      "targets": [
-        {
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "ecowitt_lightning_num",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          }
-        }
-      ],
-      "title": "Daily count",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "super-light-yellow",
-            "mode": "fixed"
-          },
-          "decimals": 0,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "dateTimeFromNow"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 18,
-        "y": 60
-      },
-      "id": 66,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.0.0+security-01",
-      "targets": [
-        {
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "ecowitt_lightning_time{container=\"ecowitt-exporter\"} * 1000",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          }
-        }
-      ],
-      "title": "Last strike",
-      "type": "stat"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 68
-      },
-      "id": 44,
-      "panels": [],
-      "title": "Air quality",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "area"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "yellow",
-                "value": 12.1
-              },
-              {
-                "color": "semi-dark-orange",
-                "value": 35.5
-              },
-              {
-                "color": "red",
-                "value": 55.5
-              },
-              {
-                "color": "dark-purple",
-                "value": 150.5
-              },
-              {
-                "color": "dark-red",
-                "value": 250.5
-              }
-            ]
-          },
-          "unit": "conμgm3"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 10,
-        "x": 0,
         "y": 69
-      },
-      "id": 45,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.0.0+security-01",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "ecowitt_pm25{container=\"ecowitt-exporter\", series=\"realtime\"}",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "PM2.5",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "area"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "yellow",
-                "value": 12.1
-              },
-              {
-                "color": "semi-dark-orange",
-                "value": 35.5
-              },
-              {
-                "color": "red",
-                "value": 55.5
-              },
-              {
-                "color": "dark-purple",
-                "value": 150.5
-              },
-              {
-                "color": "dark-red",
-                "value": 250.5
-              }
-            ]
-          },
-          "unit": "conμgm3"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 10,
-        "x": 10,
-        "y": 69
-      },
-      "id": 46,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.0.0+security-01",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "ecowitt_pm25{container=\"ecowitt-exporter\", series=\"avg_24h\"}",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "PM2.5 24-hour average",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "options": {
-                "10": {
-                  "color": "dark-purple",
-                  "index": 3,
-                  "text": "Very High"
-                }
-              },
-              "type": "value"
-            },
-            {
-              "options": {
-                "from": 1,
-                "result": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "Low"
-                },
-                "to": 3
-              },
-              "type": "range"
-            },
-            {
-              "options": {
-                "from": 4,
-                "result": {
-                  "color": "orange",
-                  "index": 1,
-                  "text": "Moderate"
-                },
-                "to": 6
-              },
-              "type": "range"
-            },
-            {
-              "options": {
-                "from": 7,
-                "result": {
-                  "color": "red",
-                  "index": 2,
-                  "text": "High"
-                },
-                "to": 9
-              },
-              "type": "range"
-            }
-          ],
-          "max": 10,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "transparent"
-              },
-              {
-                "color": "green",
-                "value": 1
-              },
-              {
-                "color": "orange",
-                "value": 4
-              },
-              {
-                "color": "red",
-                "value": 7
-              },
-              {
-                "color": "dark-purple",
-                "value": 10
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 4,
-        "x": 20,
-        "y": 69
-      },
-      "id": 57,
-      "options": {
-        "minVizHeight": 75,
-        "minVizWidth": 75,
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showThresholdLabels": true,
-        "showThresholdMarkers": true,
-        "sizing": "auto"
-      },
-      "pluginVersion": "12.0.0+security-01",
-      "targets": [
-        {
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "ecowitt_aqi{container=\"ecowitt-exporter\"}",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          }
-        }
-      ],
-      "title": "UK Air Quality Index",
-      "type": "gauge"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 76
-      },
-      "id": 61,
-      "panels": [],
-      "title": "Soil moisture",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 30,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 77
-      },
-      "id": 60,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.0.0+security-01",
-      "targets": [
-        {
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "ecowitt_soilmoisture{container=\"ecowitt-exporter\"}",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "legendFormat": "{{sensor}}",
-          "range": true,
-          "refId": "A",
-          "useBackend": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          }
-        }
-      ],
-      "title": "Soil moisture",
-      "type": "timeseries"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 84
       },
       "id": 47,
       "panels": [],
       "title": "Battery status",
       "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Battery voltage per sensor for Energizer Ultimate Lithium AA cells. The bar runs from 1.2 V per cell (empty) to 1.6 V per cell (full, as these sensors report fresh cells), so 1.2-1.6 V for 1xAA and 2.4-3.0 V for the 2xAA WS90. Lithium cells hold a nearly flat voltage for most of their life and then drop quickly, so the bar is a health indicator rather than a true percentage: yellow (below 1.4 V per cell) means order batteries, red (below 1.3 V per cell) means replace now.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "volt",
+          "decimals": 2,
+          "min": 1.2,
+          "max": 1.6,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1.3
+              },
+              {
+                "color": "green",
+                "value": 1.4
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "min",
+                "value": 2.4
+              },
+              {
+                "id": "max",
+                "value": 3.0
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 2.6
+                    },
+                    {
+                      "color": "green",
+                      "value": 2.8
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "soil_ec_batt1"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Lawn soil probe (WH52)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "wh90batt"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Outdoor array (WS90)"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 18,
+        "x": 0,
+        "y": 70
+      },
+      "id": 74,
+      "options": {
+        "displayMode": "lcd",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 40,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "left",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "sizing": "manual",
+        "valueMode": "color"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "ecowitt_batteryvoltage{sensor!=\"wh90batt\"}",
+          "legendFormat": "{{sensor}}",
+          "range": false,
+          "refId": "A",
+          "instant": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "ecowitt_batteryvoltage{sensor=\"wh90batt\"}",
+          "legendFormat": "{{sensor}}",
+          "range": false,
+          "refId": "B",
+          "instant": true
+        }
+      ],
+      "title": "Battery voltage",
+      "type": "bargauge"
     },
     {
       "datasource": {
@@ -3131,12 +2654,12 @@
                 "0": {
                   "color": "green",
                   "index": 0,
-                  "text": "🔋"
+                  "text": "\ud83d\udd0b"
                 },
                 "1": {
                   "color": "yellow",
                   "index": 1,
-                  "text": "🪫"
+                  "text": "\ud83e\udeab"
                 }
               },
               "type": "value"
@@ -3154,7 +2677,8 @@
               }
             ]
           },
-          "unit": "none"
+          "unit": "none",
+          "noValue": "None reporting"
         },
         "overrides": [
           {
@@ -3171,12 +2695,12 @@
                       "0": {
                         "color": "green",
                         "index": 0,
-                        "text": "🔋"
+                        "text": "\ud83d\udd0b"
                       },
                       "1": {
                         "color": "red",
                         "index": 1,
-                        "text": "🪫"
+                        "text": "\ud83e\udeab"
                       }
                     },
                     "type": "value"
@@ -3200,7 +2724,7 @@
                       "result": {
                         "color": "green",
                         "index": 0,
-                        "text": "🔋"
+                        "text": "\ud83d\udd0b"
                       },
                       "to": 5
                     },
@@ -3212,49 +2736,9 @@
                       "result": {
                         "color": "red",
                         "index": 1,
-                        "text": "🪫"
+                        "text": "\ud83e\udeab"
                       },
                       "to": 2
-                    },
-                    "type": "range"
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "C"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "volt"
-              },
-              {
-                "id": "mappings",
-                "value": [
-                  {
-                    "options": {
-                      "from": 0,
-                      "result": {
-                        "color": "red",
-                        "index": 0,
-                        "text": "🪫"
-                      },
-                      "to": 1.5
-                    },
-                    "type": "range"
-                  },
-                  {
-                    "options": {
-                      "from": 1.5,
-                      "result": {
-                        "color": "green",
-                        "index": 1,
-                        "text": "🔋"
-                      }
                     },
                     "type": "range"
                   }
@@ -3266,9 +2750,9 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 24,
-        "x": 0,
-        "y": 85
+        "w": 6,
+        "x": 18,
+        "y": 70
       },
       "id": 48,
       "options": {
@@ -3296,8 +2780,8 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "ecowitt_batterystatus{container=\"ecowitt-exporter\"}",
+          "editorMode": "code",
+          "expr": "ecowitt_batterystatus{sensor!=\"wh90batt\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{sensor}}",
@@ -3312,7 +2796,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "ecowitt_batterylevel{container=\"ecowitt-exporter\"}",
+          "expr": "ecowitt_batterylevel",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -3321,27 +2805,124 @@
           "range": true,
           "refId": "B",
           "useBackend": false
+        }
+      ],
+      "title": "Battery status",
+      "type": "stat",
+      "description": "Sensors that report a low-battery flag (OK / low) or a 0-5 level instead of a voltage."
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 76
+      },
+      "id": 70,
+      "panels": [],
+      "title": "Radio signal",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "id": 73,
+      "type": "timeseries",
+      "title": "RSSI",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 77
+      },
+      "interval": "1m",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "unit": "suffix: dBm",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          }
         },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "min"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "asc"
+        }
+      },
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "ecowitt_batteryvoltage",
-          "fullMetaSearch": false,
-          "hide": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "{{sensor}}",
+          "editorMode": "code",
+          "expr": "max by (name) (ecowitt_radio_rssi)",
+          "legendFormat": "{{name}}",
           "range": true,
-          "refId": "C",
-          "useBackend": false
+          "refId": "A"
         }
       ],
-      "title": "Battery status",
-      "type": "stat"
+      "pluginVersion": "12.0.0+security-01"
     }
   ],
   "refresh": "1m",
