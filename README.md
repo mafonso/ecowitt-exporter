@@ -134,6 +134,47 @@ Use the same sensor names that appear as the `sensor` label on
 If you want to use one of the units that is not yet supported, please [open an issue](https://github.com/djjudas21/ecowitt-exporter/issues)
 and request it. I can add the code to convert and display other units if there is demand.
 
+### WS90 haptic rain sensor
+
+The WS90's piezo rain gauge sends its readings under `*_piezo` field names,
+separately from a traditional tipping-bucket gauge. Each one is exported as
+`ecowitt_rain` with the field name as the `sensor` label, converted to
+`RAIN_UNIT`, and the rain state (`srain_piezo`, 0 = no rain, 1 = rain) as
+`ecowitt_rain_state`:
+
+```
+ecowitt_rain{sensor="rrain_piezo",unit="mm"} 0.0
+ecowitt_rain{sensor="erain_piezo",unit="mm"} 0.0
+ecowitt_rain{sensor="hrain_piezo",unit="mm"} 0.0
+ecowitt_rain{sensor="drain_piezo",unit="mm"} 0.0
+ecowitt_rain{sensor="wrain_piezo",unit="mm"} 9.5
+ecowitt_rain{sensor="mrain_piezo",unit="mm"} 17.9
+ecowitt_rain{sensor="yrain_piezo",unit="mm"} 639.3
+ecowitt_rain{sensor="last24hrain_piezo",unit="mm"} 1.0
+ecowitt_rain{sensor="total_piezo",unit="mm"} 798.9
+ecowitt_rain_state{sensor="srain_piezo"} 0.0
+```
+
+`total_piezo` was added in GW2000A firmware V3.3.3.
+
+### Fields that can't be processed
+
+Gateway firmware updates sometimes add or change fields in the push body. If
+the exporter can't process a field, it skips that field and still records
+the rest of the push, so `/report` keeps returning 200. Each skipped field
+is counted in `ecowitt_skipped_fields_total{field="..."}`, and logged at
+WARNING the first time it fails (at DEBUG after that). Only the first 100
+distinct field names get their own label; any others are counted as
+`field="other"`.
+
+`ecowitt_last_report_timestamp_seconds` is still updated when some fields
+are skipped, because the gateway is still reporting. To catch fields that
+start failing, for example after a firmware update, alert on the counter:
+
+```promql
+increase(ecowitt_skipped_fields_total[10m]) > 0
+```
+
 ## Deployment
 
 This project is available as a Docker image [djjudas21/ecowitt-exporter](https://hub.docker.com/r/djjudas21/ecowitt-exporter) which can be run as a
