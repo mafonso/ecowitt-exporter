@@ -10,7 +10,10 @@ V3.3.3 push body with the WS90 and WH52 fields plus `total_piezo`
 (`test_fixtures/total_piezo_post.txt`), and scrapes `/metrics` to verify that
 the POST returns 200 and that the rain and WH52 metrics are exported. It then
 POSTs a body with fields that cannot be processed, and checks that they are
-skipped and logged without failing the rest of the push.
+skipped, logged and counted in ecowitt_skipped_fields_total without failing
+the rest of the push. Finally it POSTs more distinct failing fields than
+MAX_SKIPPED_FIELDS, and checks that the extra ones are counted as
+field="other".
 
 The exporter runs with the same interpreter as the test, so run it with one
 that has `requirements.txt` installed, e.g.
@@ -55,6 +58,14 @@ BAD_EXPECTED = 'ecowitt_temp{location="outdoor",sensor="outdoor",unit="c"} 20.0'
 BAD_LOGGED = ["Skipping field temp9f", "Skipping field baromxin"]
 # baromxin must be skipped, not exported under a label left over from temp9f
 BAD_UNEXPECTED = 'ecowitt_barom{sensor="ch9"'
+BAD_COUNTED = [
+    'ecowitt_skipped_fields_total{field="temp9f"} 1.0',
+    'ecowitt_skipped_fields_total{field="baromxin"} 1.0',
+]
+
+# More distinct failing fields than MAX_SKIPPED_FIELDS (100) in the exporter;
+# each raises "unknown barometer field"
+MANY_BAD_BODY = "&".join(f"barombad{i}in=30.000" for i in range(105))
 
 
 def _post(port: int, body: str) -> int:
@@ -118,6 +129,14 @@ def main() -> int:
             if bad_status != 200:
                 errors.append(f"POST with unprocessable fields returned {bad_status}")
             bad_metrics_text = _metrics(port)
+
+            try:
+                many_status = _post(port, MANY_BAD_BODY)
+            except urllib.error.HTTPError as exc:
+                many_status = exc.code
+            if many_status != 200:
+                errors.append(f"POST with more distinct failing fields than the cap returned {many_status}")
+            many_metrics_text = _metrics(port)
         finally:
             proc.terminate()
             try:
@@ -132,6 +151,17 @@ def main() -> int:
     if BAD_UNEXPECTED in bad_metrics_text:
         errors.append(f"UNEXPECTED after unprocessable fields: {BAD_UNEXPECTED}")
     errors += [f"NOT LOGGED: {m}" for m in BAD_LOGGED if m not in stderr_text]
+    errors += [f"NOT COUNTED: {m}" for m in BAD_COUNTED if m not in bad_metrics_text]
+
+    # temp9f and baromxin, then the first 98 barombad fields get their own
+    # label; the last 7 are counted as field="other"
+    named = [l for l in many_metrics_text.splitlines()
+             if l.startswith("ecowitt_skipped_fields_total{")
+             and 'field="other"' not in l]
+    if len(named) != 100:
+        errors.append(f"expected 100 named skipped-field labels, got {len(named)}")
+    if 'ecowitt_skipped_fields_total{field="other"} 7.0' not in many_metrics_text:
+        errors.append('MISSING: ecowitt_skipped_fields_total{field="other"} 7.0')
 
     if errors:
         for e in errors:
@@ -144,7 +174,7 @@ def main() -> int:
         return 1
 
     print(f"OK - POSTs returned 200, all {len(EXPECTED)} metrics present, "
-          "unprocessable fields skipped and logged")
+          "unprocessable fields skipped, logged and counted (capped)")
     return 0
 
 

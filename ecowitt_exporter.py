@@ -4,7 +4,7 @@ import re
 import time
 from flask import Flask, request
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
-from prometheus_client import make_wsgi_app, Gauge, Info
+from prometheus_client import make_wsgi_app, Counter, Gauge, Info
 from conversions import mph2kmh, mph2ms, mph2kts, mph2fps, in2mm, km2mi, inhg2hpa, inhg2mmhg, wm22lux, wm22fc, f2c, f2k, aqi_epa, aqi_mep, aqi_nepm, aqi_uk, mph2beaufort
 
 app = Flask(__name__)
@@ -60,9 +60,10 @@ print ('  SENSORS_TO_TRACK: ' + (','.join(sensors_to_track) if sensors_to_track 
 # Declare metrics as a global
 metrics={}
 
-# Push body keys that have failed to process at least once, so each is logged
-# at WARNING only the first time (see the /report handler)
-failed_keys = set()
+# Push body fields that have failed to process at least once (see
+# record_skipped_field). Bounded, as /report accepts arbitrary field names.
+MAX_SKIPPED_FIELDS = 100
+skipped_fields = set()
 
 @app.route('/')
 def version():
@@ -74,19 +75,6 @@ def log_request_info():
     app.logger.debug('Headers: %s', request.headers)
     app.logger.debug('Body: %s', request.get_data())
 
-
-# Support for WS90 with a haptic rain sensor
-rainmaps = {
-        "rrain_piezo": "rainrate",
-        "erain_piezo": "eventrain",
-        "hrain_piezo": "hourlyrain",
-        "drain_piezo": "dailyrain",
-        "wrain_piezo": "weeklyrain",
-        "mrain_piezo": "monthlyrain",
-        "yrain_piezo": "yearlyrain",
-        "last24hrain_piezo": "last24hrain",
-        "total_piezo": "totalrain"
-}
 
 # pylint: disable=dangerous-default-value
 def addmetric(metric: str, value: str, label: list = []):
@@ -101,6 +89,29 @@ def addmetric(metric: str, value: str, label: list = []):
     else:
         status = metrics[metric].set(value)
     return status
+
+def record_skipped_field(field: str, value: str, exc: Exception):
+    '''
+    Count and log a push body field that could not be processed.
+
+    ecowitt_skipped_fields_total{field} counts every skip, so a field that
+    keeps failing can be alerted on. The log has a WARNING the first time
+    each field fails, and DEBUG after that, so a gateway pushing every few
+    seconds does not flood it. Only the first MAX_SKIPPED_FIELDS distinct
+    field names are tracked; any others are counted as field="other", which
+    bounds both memory and the counter's label cardinality.
+    '''
+    if field in skipped_fields:
+        label = field
+        app.logger.debug("Skipping field %s=%r: %r", field, value, exc)
+    elif len(skipped_fields) < MAX_SKIPPED_FIELDS:
+        skipped_fields.add(field)
+        label = field
+        app.logger.warning("Skipping field %s=%r that could not be processed: %r", field, value, exc)
+    else:
+        label = 'other'
+        app.logger.debug("Skipping field %s=%r: %r", field, value, exc)
+    metrics['skipped_fields'].labels(label).inc()
 
 def calculate_aqi(standard: str, value: str) -> str:
     '''
@@ -404,21 +415,17 @@ def logecowitt():
                     addmetric(metric='lightning', label=[distance_unit], value=value)
         except Exception as exc:  # pylint: disable=broad-exception-caught
             # A field the exporter does not understand (e.g. a new key added by
-            # a gateway firmware update) must not fail the whole push: skip it
-            # and keep processing the rest. Log at WARNING the first time each
-            # key fails, and at DEBUG afterwards so a gateway pushing every
-            # few seconds does not flood the log.
-            if field in failed_keys:
-                app.logger.debug("Skipping field %s=%r: %r", field, data.get(field), exc)
-            else:
-                failed_keys.add(field)
-                app.logger.warning("Skipping field %s=%r that could not be processed: %r", field, data.get(field), exc)
+            # a gateway firmware update) must not fail the whole push: skip it,
+            # count it, and keep processing the rest.
+            record_skipped_field(field, data.get(field), exc)
 
 
-    # Record the wall-clock time of this successful push from the gateway.
+    # Record the wall-clock time of this push from the gateway.
     # Prometheus can then use `time() - ecowitt_last_report_timestamp_seconds`
     # to detect a stale gateway (gauges persist their last value forever,
     # so absent_over_time() on data metrics never fires if the gateway dies).
+    # This is set even if some fields were skipped: the gateway is still
+    # reporting. Use ecowitt_skipped_fields_total to detect fields that fail.
     #
     # Per-sensor timestamps are updated inline above as each sensor's key is
     # processed, so individual sensor staleness can also be detected even when
@@ -467,7 +474,12 @@ if __name__ == "__main__":
     metrics['soilec'] = Gauge(name='ecowitt_soilec', documentation='Soil electrical conductivity', labelnames=['sensor', 'unit'])
     metrics['last_report_timestamp'] = Gauge(
         name='ecowitt_last_report_timestamp_seconds',
-        documentation='Unix timestamp of the most recent successful POST from the Ecowitt gateway to /report. Use `time() - ecowitt_last_report_timestamp_seconds > N` to detect a stale or offline gateway.'
+        documentation='Unix timestamp of the most recent POST from the Ecowitt gateway to /report, including pushes in which some fields were skipped (see ecowitt_skipped_fields_total). Use `time() - ecowitt_last_report_timestamp_seconds > N` to detect a stale or offline gateway.'
+    )
+    metrics['skipped_fields'] = Counter(
+        name='ecowitt_skipped_fields',
+        documentation='Push body fields that could not be processed and were skipped, by field name (field="other" once MAX_SKIPPED_FIELDS distinct names have been seen). Use `increase(ecowitt_skipped_fields_total[10m]) > 0` to detect fields that fail, e.g. after a gateway firmware update.',
+        labelnames=['field']
     )
     # Seed with current time so the freshness alert does not fire immediately
     # after an exporter restart (it gets a grace period equal to the alert
