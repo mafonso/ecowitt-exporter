@@ -4,7 +4,7 @@ import re
 import time
 from flask import Flask, request
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
-from prometheus_client import make_wsgi_app, Gauge, Info
+from prometheus_client import make_wsgi_app, Counter, Gauge, Info
 from conversions import mph2kmh, mph2ms, mph2kts, mph2fps, in2mm, km2mi, inhg2hpa, inhg2mmhg, wm22lux, wm22fc, f2c, f2k, aqi_epa, aqi_mep, aqi_nepm, aqi_uk, mph2beaufort
 
 app = Flask(__name__)
@@ -60,6 +60,11 @@ print ('  SENSORS_TO_TRACK: ' + (','.join(sensors_to_track) if sensors_to_track 
 # Declare metrics as a global
 metrics={}
 
+# Push body fields that have failed to process at least once (see
+# record_skipped_field). Bounded, as /report accepts arbitrary field names.
+MAX_SKIPPED_FIELDS = 100
+skipped_fields = set()
+
 @app.route('/')
 def version():
     return "Ecowitt Exporter\n"
@@ -70,18 +75,6 @@ def log_request_info():
     app.logger.debug('Headers: %s', request.headers)
     app.logger.debug('Body: %s', request.get_data())
 
-
-# Support for WS90 with a haptic rain sensor
-rainmaps = {
-        "rrain_piezo": "rainrate",
-        "erain_piezo": "eventrain",
-        "hrain_piezo": "hourlyrain",
-        "drain_piezo": "dailyrain",
-        "wrain_piezo": "weeklyrain",
-        "mrain_piezo": "monthlyrain",
-        "yrain_piezo": "yearlyrain",
-        "last24hrain_piezo": "last24hrain"
-}
 
 # pylint: disable=dangerous-default-value
 def addmetric(metric: str, value: str, label: list = []):
@@ -96,6 +89,29 @@ def addmetric(metric: str, value: str, label: list = []):
     else:
         status = metrics[metric].set(value)
     return status
+
+def record_skipped_field(field: str, value: str, exc: Exception):
+    '''
+    Count and log a push body field that could not be processed.
+
+    ecowitt_skipped_fields_total{field} counts every skip, so a field that
+    keeps failing can be alerted on. The log has a WARNING the first time
+    each field fails, and DEBUG after that, so a gateway pushing every few
+    seconds does not flood it. Only the first MAX_SKIPPED_FIELDS distinct
+    field names are tracked; any others are counted as field="other", which
+    bounds both memory and the counter's label cardinality.
+    '''
+    if field in skipped_fields:
+        label = field
+        app.logger.debug("Skipping field %s=%r: %r", field, value, exc)
+    elif len(skipped_fields) < MAX_SKIPPED_FIELDS:
+        skipped_fields.add(field)
+        label = field
+        app.logger.warning("Skipping field %s=%r that could not be processed: %r", field, value, exc)
+    else:
+        label = 'other'
+        app.logger.debug("Skipping field %s=%r: %r", field, value, exc)
+    metrics['skipped_fields'].labels(label).inc()
 
 def calculate_aqi(standard: str, value: str) -> str:
     '''
@@ -121,283 +137,295 @@ def logecowitt():
 
     for key in data:
         # Process each key from the raw data, do unit conversions if necessary,
-        # then add the results to the Prometheus exporter
-        value = data[key]
-        app.logger.debug("Received raw value %s: %s", key, value)
+        # then add the results to the Prometheus exporter.
+        # Some branches below rewrite `key`, so keep the field name as sent
+        # for logging.
+        field = key
+        try:
+            value = data[key]
+            app.logger.debug("Received raw value %s: %s", key, value)
 
-        # Ignore these fields
-        if key in ['PASSKEY', 'dateutc', 'runtime']:
-            continue
+            # Ignore these fields
+            if key in ['PASSKEY', 'dateutc', 'runtime']:
+                continue
         
-        # Add these fields as INFO
-        elif key in ['stationtype', 'freq', 'model']:
-            metrics[key].info({key: value})
+            # Add these fields as INFO
+            elif key in ['stationtype', 'freq', 'model']:
+                metrics[key].info({key: value})
 
-        # No conversions needed
-        elif key in ['winddir', 'uv', 'lightning_num', 'lightning_time']:
-            addmetric(metric=key, value=value)
+            # No conversions needed
+            elif key in ['winddir', 'uv', 'lightning_num', 'lightning_time']:
+                addmetric(metric=key, value=value)
         
-        # Support for WS90 capacitor
-        elif key in ['ws90cap_volt']:
-            addmetric(metric='ws90', label=[key, 'volt'], value=value)
+            # Support for WS90 capacitor
+            elif key in ['ws90cap_volt']:
+                addmetric(metric='ws90', label=[key, 'volt'], value=value)
 
-        # Battery status & levels
-        elif 'batt' in key:
-            # Battery level - returns battery level from 0-5
-            if key in ['wh57batt', 'pm25batt1', 'pm25batt2']:
-                addmetric(metric='batterylevel', label=[key], value=value)
-                # Per-sensor last-seen timestamp for PM2.5 sensors (see note
-                # on sensor freshness tracking at bottom of /report handler).
-                # The WH41 PM2.5 sensor can drop off the radio and we want to
-                # alert on that independently of the gateway.
-                if key.startswith('pm25batt'):
-                    addmetric(metric='sensor_last_report_timestamp',
-                              label=[key], value=time.time())
-            # Battery voltage - returns a decimal voltage e.g. 1.7
-            elif key.startswith(('soil', 'ws90', 'wh90')):
-                addmetric(metric='batteryvoltage', label=[key, 'volt'], value=value)
+            # Battery status & levels
+            elif 'batt' in key:
+                # Battery level - returns battery level from 0-5
+                if key in ['wh57batt', 'pm25batt1', 'pm25batt2']:
+                    addmetric(metric='batterylevel', label=[key], value=value)
+                    # Per-sensor last-seen timestamp for PM2.5 sensors (see note
+                    # on sensor freshness tracking at bottom of /report handler).
+                    # The WH41 PM2.5 sensor can drop off the radio and we want to
+                    # alert on that independently of the gateway.
+                    if key.startswith('pm25batt'):
+                        addmetric(metric='sensor_last_report_timestamp',
+                                  label=[key], value=time.time())
+                # Battery voltage - returns a decimal voltage e.g. 1.7
+                elif key.startswith(('soil', 'ws90', 'wh90')):
+                    addmetric(metric='batteryvoltage', label=[key, 'volt'], value=value)
+                    # Per-sensor last-seen timestamp (see note on sensor freshness
+                    # tracking at bottom of /report handler).
+                    if key.startswith(('soilbatt', 'soil_ec_batt')):
+                        addmetric(metric='sensor_last_report_timestamp',
+                                  label=[key], value=time.time())
+                # Battery status - returns 0 for OK and 1 for low
+                else:
+                    addmetric(metric='batterystatus', label=[key], value=value)
+
+            # WH52 soil sensor - moisture, default percent
+            # The raw AD readings (soil_ec_hum_ad1, soil_ec_ad1) are ignored, as soilad1 is
+            elif re.fullmatch(r'soil_ec_hum\d+', key):
+                addmetric(metric='soilmoisture', label=[key, 'percent'], value=value)
                 # Per-sensor last-seen timestamp (see note on sensor freshness
                 # tracking at bottom of /report handler).
-                if key.startswith(('soilbatt', 'soil_ec_batt')):
-                    addmetric(metric='sensor_last_report_timestamp',
-                              label=[key], value=time.time())
-            # Battery status - returns 0 for OK and 1 for low
-            else:
-                addmetric(metric='batterystatus', label=[key], value=value)
-
-        # WH52 soil sensor - moisture, default percent
-        # The raw AD readings (soil_ec_hum_ad1, soil_ec_ad1) are ignored, as soilad1 is
-        elif re.fullmatch(r'soil_ec_hum\d+', key):
-            addmetric(metric='soilmoisture', label=[key, 'percent'], value=value)
-            # Per-sensor last-seen timestamp (see note on sensor freshness
-            # tracking at bottom of /report handler).
-            addmetric(metric='sensor_last_report_timestamp',
-                      label=[key], value=time.time())
-
-        # WH52 soil sensor - temperature, default Fahrenheit
-        elif re.fullmatch(r'soil_ec_temp\d+', key):
-            if temperature_unit == 'c':
-                value = f2c(value)
-            elif temperature_unit == 'k':
-                value = f2k(value)
-            addmetric(metric='soiltemp', label=[key, temperature_unit], value=value)
-
-        # WH52 soil sensor - electrical conductivity, default uS/cm
-        elif re.fullmatch(r'soil_ec\d+', key):
-            addmetric(metric='soilec', label=[key, 'uscm'], value=value)
-
-        # Soil moisture
-        elif key.startswith('soilmoisture'):
-            addmetric(metric='soilmoisture', label=[key, 'percent'], value=value)
-            # Per-sensor last-seen timestamp (see note on sensor freshness
-            # tracking at bottom of /report handler).
-            addmetric(metric='sensor_last_report_timestamp',
-                      label=[key], value=time.time())
-
-        # WH45 CO2/AQI multi-sensor (tf_co2, humi_co2, pm25_co2,
-        # pm25_24h_co2, pm10_co2, pm10_24h_co2, co2, co2_24h)
-        # Must be checked BEFORE the generic pm25 handler.
-        elif key == 'tf_co2':
-            if temperature_unit == 'c':
-                value = f2c(value)
-            elif temperature_unit == 'k':
-                value = f2k(value)
-            location = co2_location if co2_location else 'co2'
-            addmetric(metric='temp', label=['co2', temperature_unit, location], value=value)
-            addmetric(metric='sensor_last_report_timestamp',
-                      label=['co2'], value=time.time())
-
-        elif key == 'humi_co2':
-            location = co2_location if co2_location else 'co2'
-            addmetric(metric='humidity', label=['co2', 'percent', location], value=value)
-
-        elif key == 'pm25_co2':
-            addmetric(metric='pm25', label=['realtime', 'co2', 'μgm3'], value=value)
-
-        elif key == 'pm25_24h_co2':
-            addmetric(metric='pm25', label=['avg_24h', 'co2', 'μgm3'], value=value)
-            aqi = calculate_aqi(standard=aqi_standard, value=value)
-            addmetric(metric='aqi', label=[aqi_standard, 'co2'], value=aqi)
-
-        elif key == 'pm10_co2':
-            addmetric(metric='pm10', label=['realtime', 'co2', 'μgm3'], value=value)
-
-        elif key == 'pm10_24h_co2':
-            addmetric(metric='pm10', label=['avg_24h', 'co2', 'μgm3'], value=value)
-
-        elif key == 'co2':
-            addmetric(metric='co2', label=['realtime', 'ppm'], value=value)
-
-        elif key == 'co2_24h':
-            addmetric(metric='co2', label=['avg_24h', 'ppm'], value=value)
-
-        # PM25 (WH41 channel sensors)
-        # 'pm25_ch1', 'pm25_avg_24h_ch1'
-        elif key.startswith('pm25'):
-            # Check for invalid readings from the WH41 PM2.5 sensor when the battery is low
-            # https://github.com/djjudas21/ecowitt-exporter/issues/17
-            # If we find bad data, just skip the entire PM2.5 section
-            if (data.get('pm25batt1') == '1' and data.get('pm25_ch1') == '1000') or (data.get('pm25batt2') == '1' and data.get('pm25_ch2') == '1000'):
-                app.logger.debug(f"Drop erroneous PM25 reading {key}: {value}")
-                continue
-
-            # Preserve the original key (e.g. 'pm25_ch1') so we can use it as
-            # a per-sensor last-seen label below.
-            original_key = key
-
-            # Drop PM25 prefix
-            key = key.replace('pm25_', '')
-
-            # Get & drop sensor ch suffix
-            sensorsearch = re.search(r"(ch\d)$", key)
-            sensor = sensorsearch.group(1)
-            key = re.sub(r"ch\d$", '', key)
-
-            # Generate series label
-            if key.startswith('avg_24h'):
-                series = 'avg_24h'
-            else:
-                series = 'realtime'
-
-            # Log the PM25 metric
-            addmetric(metric='pm25', label=[series, sensor, 'μgm3'], value=value)
-
-            # Per-sensor last-seen timestamp for PM2.5 sensors (see note on
-            # sensor freshness tracking at bottom of /report handler). Only
-            # update on the realtime series; avg_24h is a derived rollup and
-            # doesn't represent a fresh sensor push.
-            if series == 'realtime':
                 addmetric(metric='sensor_last_report_timestamp',
-                          label=[original_key], value=time.time())
+                          label=[key], value=time.time())
 
-            # Calculate AQI from PM25
-            if key.startswith('avg_24h'):
+            # WH52 soil sensor - temperature, default Fahrenheit
+            elif re.fullmatch(r'soil_ec_temp\d+', key):
+                if temperature_unit == 'c':
+                    value = f2c(value)
+                elif temperature_unit == 'k':
+                    value = f2k(value)
+                addmetric(metric='soiltemp', label=[key, temperature_unit], value=value)
+
+            # WH52 soil sensor - electrical conductivity, default uS/cm
+            elif re.fullmatch(r'soil_ec\d+', key):
+                addmetric(metric='soilec', label=[key, 'uscm'], value=value)
+
+            # Soil moisture
+            elif key.startswith('soilmoisture'):
+                addmetric(metric='soilmoisture', label=[key, 'percent'], value=value)
+                # Per-sensor last-seen timestamp (see note on sensor freshness
+                # tracking at bottom of /report handler).
+                addmetric(metric='sensor_last_report_timestamp',
+                          label=[key], value=time.time())
+
+            # WH45 CO2/AQI multi-sensor (tf_co2, humi_co2, pm25_co2,
+            # pm25_24h_co2, pm10_co2, pm10_24h_co2, co2, co2_24h)
+            # Must be checked BEFORE the generic pm25 handler.
+            elif key == 'tf_co2':
+                if temperature_unit == 'c':
+                    value = f2c(value)
+                elif temperature_unit == 'k':
+                    value = f2k(value)
+                location = co2_location if co2_location else 'co2'
+                addmetric(metric='temp', label=['co2', temperature_unit, location], value=value)
+                addmetric(metric='sensor_last_report_timestamp',
+                          label=['co2'], value=time.time())
+
+            elif key == 'humi_co2':
+                location = co2_location if co2_location else 'co2'
+                addmetric(metric='humidity', label=['co2', 'percent', location], value=value)
+
+            elif key == 'pm25_co2':
+                addmetric(metric='pm25', label=['realtime', 'co2', 'μgm3'], value=value)
+
+            elif key == 'pm25_24h_co2':
+                addmetric(metric='pm25', label=['avg_24h', 'co2', 'μgm3'], value=value)
                 aqi = calculate_aqi(standard=aqi_standard, value=value)
-                addmetric(metric='aqi', label=[aqi_standard, sensor], value=aqi)
+                addmetric(metric='aqi', label=[aqi_standard, 'co2'], value=aqi)
 
-        # Humidity - no conversion needed
-        elif key.startswith('humidity'):
-            match key:
-                case 'humidity':
-                    label = 'outdoor'
-                    location = outdoor_location if outdoor_location else label
-                case 'humidityin':
+            elif key == 'pm10_co2':
+                addmetric(metric='pm10', label=['realtime', 'co2', 'μgm3'], value=value)
+
+            elif key == 'pm10_24h_co2':
+                addmetric(metric='pm10', label=['avg_24h', 'co2', 'μgm3'], value=value)
+
+            elif key == 'co2':
+                addmetric(metric='co2', label=['realtime', 'ppm'], value=value)
+
+            elif key == 'co2_24h':
+                addmetric(metric='co2', label=['avg_24h', 'ppm'], value=value)
+
+            # PM25 (WH41 channel sensors)
+            # 'pm25_ch1', 'pm25_avg_24h_ch1'
+            elif key.startswith('pm25'):
+                # Check for invalid readings from the WH41 PM2.5 sensor when the battery is low
+                # https://github.com/djjudas21/ecowitt-exporter/issues/17
+                # If we find bad data, just skip the entire PM2.5 section
+                if (data.get('pm25batt1') == '1' and data.get('pm25_ch1') == '1000') or (data.get('pm25batt2') == '1' and data.get('pm25_ch2') == '1000'):
+                    app.logger.debug(f"Drop erroneous PM25 reading {key}: {value}")
+                    continue
+
+                # Preserve the original key (e.g. 'pm25_ch1') so we can use it as
+                # a per-sensor last-seen label below.
+                original_key = key
+
+                # Drop PM25 prefix
+                key = key.replace('pm25_', '')
+
+                # Get & drop sensor ch suffix
+                sensorsearch = re.search(r"(ch\d)$", key)
+                sensor = sensorsearch.group(1)
+                key = re.sub(r"ch\d$", '', key)
+
+                # Generate series label
+                if key.startswith('avg_24h'):
+                    series = 'avg_24h'
+                else:
+                    series = 'realtime'
+
+                # Log the PM25 metric
+                addmetric(metric='pm25', label=[series, sensor, 'μgm3'], value=value)
+
+                # Per-sensor last-seen timestamp for PM2.5 sensors (see note on
+                # sensor freshness tracking at bottom of /report handler). Only
+                # update on the realtime series; avg_24h is a derived rollup and
+                # doesn't represent a fresh sensor push.
+                if series == 'realtime':
+                    addmetric(metric='sensor_last_report_timestamp',
+                              label=[original_key], value=time.time())
+
+                # Calculate AQI from PM25
+                if key.startswith('avg_24h'):
+                    aqi = calculate_aqi(standard=aqi_standard, value=value)
+                    addmetric(metric='aqi', label=[aqi_standard, sensor], value=aqi)
+
+            # Humidity - no conversion needed
+            elif key.startswith('humidity'):
+                match key:
+                    case 'humidity':
+                        label = 'outdoor'
+                        location = outdoor_location if outdoor_location else label
+                    case 'humidityin':
+                        label = 'indoor'
+                        location = indoor_location if indoor_location else label
+                    case _:
+                        label = f'ch{key[-1]}'
+                        location = globals()[f'temp{key[-1]}_location']
+                # pylint: disable=used-before-assignment
+                addmetric(metric='humidity', label=[label, 'percent', location], value=value)
+
+            # Solar irradiance, default W/m^2
+            elif key in ['solarradiation']:
+                if irradiance_unit == 'lx':
+                    value = wm22lux(value)
+                elif irradiance_unit == 'fc':
+                    value = wm22fc(value)
+                addmetric(metric='solarradiation', label=[irradiance_unit], value=value)
+
+            # Temperature, default Fahrenheit
+            # 'tempinf', 'tempf', 'temp1f', 'temp2f', 'temp3f', 'temp4f', 'temp5f', 'temp6f', 'temp7f', 'temp8f'
+            elif key.startswith('temp'):
+                # Strip trailing f
+                key = key[:-1]
+
+                if temperature_unit == 'c':
+                    value = f2c(value)
+                elif temperature_unit == 'k':
+                    value = f2k(value)
+
+                if key == 'tempin':
                     label = 'indoor'
                     location = indoor_location if indoor_location else label
-                case _:
+                elif key == 'temp':
+                    label = 'outdoor'
+                    location = outdoor_location if outdoor_location else label
+                else:
                     label = f'ch{key[-1]}'
                     location = globals()[f'temp{key[-1]}_location']
-            # pylint: disable=used-before-assignment
-            addmetric(metric='humidity', label=[label, 'percent', location], value=value)
 
-        # Solar irradiance, default W/m^2
-        elif key in ['solarradiation']:
-            if irradiance_unit == 'lx':
-                value = wm22lux(value)
-            elif irradiance_unit == 'fc':
-                value = wm22fc(value)
-            addmetric(metric='solarradiation', label=[irradiance_unit], value=value)
+                addmetric(metric='temp', label=[label, temperature_unit, location], value=value)
 
-        # Temperature, default Fahrenheit
-        # 'tempinf', 'tempf', 'temp1f', 'temp2f', 'temp3f', 'temp4f', 'temp5f', 'temp6f', 'temp7f', 'temp8f'
-        elif key.startswith('temp'):
-            # Strip trailing f
-            key = key[:-1]
+            # Pressure, default inches Hg
+            elif key.startswith('barom'):
+                if pressure_unit == 'hpa':
+                    value = inhg2hpa(value)
+                elif pressure_unit == 'mmhg':
+                    value = inhg2mmhg(value)
+                # Remove 'in' suffix
+                key = key[:-2]
 
-            if temperature_unit == 'c':
-                value = f2c(value)
-            elif temperature_unit == 'k':
-                value = f2k(value)
+                if key == 'baromrel':
+                    label = 'relative'
+                elif key == 'baromabs':
+                    label = 'absolute'
+                else:
+                    raise ValueError(f"unknown barometer field {key}")
+                addmetric(metric='barom', label=[label, pressure_unit], value=value)
 
-            if key == 'tempin':
-                label = 'indoor'
-                location = indoor_location if indoor_location else label
-            elif key == 'temp':
-                label = 'outdoor'
-                location = outdoor_location if outdoor_location else label
-            else:
-                label = f'ch{key[-1]}'
-                location = globals()[f'temp{key[-1]}_location']
+            # VPD, default inches Hg
+            elif key in ['vpd']:
+                if pressure_unit == 'hpa':
+                    value = inhg2hpa(value)
+                elif pressure_unit == 'mmhg':
+                    value = inhg2mmhg(value)
 
-            addmetric(metric='temp', label=[label, temperature_unit, location], value=value)
+                addmetric(metric='vpd', label=[pressure_unit], value=value)
 
-        # Pressure, default inches Hg
-        elif key.startswith('barom'):
-            if pressure_unit == 'hpa':
-                value = inhg2hpa(value)
-            elif pressure_unit == 'mmhg':
-                value = inhg2mmhg(value)
-            # Remove 'in' suffix
-            key = key[:-2]
+            # Wind speed, default mph
+            elif key in ['windspeedmph', 'windgustmph', 'maxdailygust']:
+                if wind_unit == 'kmh':
+                    value = mph2kmh(value)
+                elif wind_unit == 'ms':
+                    value = mph2ms(value)
+                elif wind_unit == 'knots':
+                    value = mph2kts(value)
+                elif wind_unit == 'fps':
+                    value = mph2fps(value)
 
-            if key == 'baromrel':
-                label = 'relative'
-            elif key == 'baromabs':
-                label = 'absolute'
-            addmetric(metric='barom', label=[label, pressure_unit], value=value)
+                if key == 'windspeedmph':
+                    beaufort = mph2beaufort(value)
+                    addmetric(metric='wind_beaufort', value=beaufort)
 
-        # VPD, default inches Hg
-        elif key in ['vpd']:
-            if pressure_unit == 'hpa':
-                value = inhg2hpa(value)
-            elif pressure_unit == 'mmhg':
-                value = inhg2mmhg(value)
-
-            addmetric(metric='vpd', label=[pressure_unit], value=value)
-
-        # Wind speed, default mph
-        elif key in ['windspeedmph', 'windgustmph', 'maxdailygust']:
-            if wind_unit == 'kmh':
-                value = mph2kmh(value)
-            elif wind_unit == 'ms':
-                value = mph2ms(value)
-            elif wind_unit == 'knots':
-                value = mph2kts(value)
-            elif wind_unit == 'fps':
-                value = mph2fps(value)
-
-            if key == 'windspeedmph':
-                beaufort = mph2beaufort(value)
-                addmetric(metric='wind_beaufort', value=beaufort)
-
-            if key != 'maxdailygust':
-                key = key[:-3]
-            addmetric(metric='wind', label=[key, wind_unit], value=value)
+                if key != 'maxdailygust':
+                    key = key[:-3]
+                addmetric(metric='wind', label=[key, wind_unit], value=value)
         
-        # Support for WS90 with a haptic rain sensor (rain state)
-        elif key == 'srain_piezo':
-            # Rain state: 0 = no rain, 1 = rain
-            addmetric(metric='rain_state', label=[key], value=value)
+            # Support for WS90 with a haptic rain sensor (rain state)
+            elif key == 'srain_piezo':
+                # Rain state: 0 = no rain, 1 = rain
+                addmetric(metric='rain_state', label=[key], value=value)
 
-        # Support for WS90 with a haptic rain sensor (cumulative rain amounts)
-        elif key.endswith('piezo'):
-            if rain_unit == 'mm':
-                value = in2mm(value)
-            mkey = rainmaps[key]
-            addmetric(metric='rain', label=[key, rain_unit], value=value)
+            # Support for WS90 with a haptic rain sensor (cumulative rain amounts)
+            elif key.endswith('piezo'):
+                if rain_unit == 'mm':
+                    value = in2mm(value)
+                addmetric(metric='rain', label=[key, rain_unit], value=value)
 
-        # Rainfall, default inches
-        elif 'rain' in key:
-        # 'rainratein', 'eventrainin', 'hourlyrainin', 'dailyrainin', 'weeklyrainin', 'monthlyrainin', 'yearlyrainin', 'totalrainin'
-            if rain_unit == 'mm':
-                value = in2mm(value)
-            key = key[:-2]
-            key = key.replace('rain', '')
-            addmetric(metric='rain', label=[key, rain_unit], value=value)
+            # Rainfall, default inches
+            elif 'rain' in key:
+            # 'rainratein', 'eventrainin', 'hourlyrainin', 'dailyrainin', 'weeklyrainin', 'monthlyrainin', 'yearlyrainin', 'totalrainin'
+                if rain_unit == 'mm':
+                    value = in2mm(value)
+                key = key[:-2]
+                key = key.replace('rain', '')
+                addmetric(metric='rain', label=[key, rain_unit], value=value)
 
-        # Lightning distance, default kilometers
-        elif key in ['lightning']:
-            if distance_unit == 'km':
-                addmetric(metric='lightning', label=[distance_unit], value=value)
-            elif distance_unit == 'mi':
-                value = km2mi(value)
-                addmetric(metric='lightning', label=[distance_unit], value=value)
+            # Lightning distance, default kilometers
+            elif key in ['lightning']:
+                if distance_unit == 'km':
+                    addmetric(metric='lightning', label=[distance_unit], value=value)
+                elif distance_unit == 'mi':
+                    value = km2mi(value)
+                    addmetric(metric='lightning', label=[distance_unit], value=value)
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            # A field the exporter does not understand (e.g. a new key added by
+            # a gateway firmware update) must not fail the whole push: skip it,
+            # count it, and keep processing the rest.
+            record_skipped_field(field, data.get(field), exc)
 
 
-    # Record the wall-clock time of this successful push from the gateway.
+    # Record the wall-clock time of this push from the gateway.
     # Prometheus can then use `time() - ecowitt_last_report_timestamp_seconds`
     # to detect a stale gateway (gauges persist their last value forever,
     # so absent_over_time() on data metrics never fires if the gateway dies).
+    # This is set even if some fields were skipped: the gateway is still
+    # reporting. Use ecowitt_skipped_fields_total to detect fields that fail.
     #
     # Per-sensor timestamps are updated inline above as each sensor's key is
     # processed, so individual sensor staleness can also be detected even when
@@ -446,7 +474,12 @@ if __name__ == "__main__":
     metrics['soilec'] = Gauge(name='ecowitt_soilec', documentation='Soil electrical conductivity', labelnames=['sensor', 'unit'])
     metrics['last_report_timestamp'] = Gauge(
         name='ecowitt_last_report_timestamp_seconds',
-        documentation='Unix timestamp of the most recent successful POST from the Ecowitt gateway to /report. Use `time() - ecowitt_last_report_timestamp_seconds > N` to detect a stale or offline gateway.'
+        documentation='Unix timestamp of the most recent POST from the Ecowitt gateway to /report, including pushes in which some fields were skipped (see ecowitt_skipped_fields_total). Use `time() - ecowitt_last_report_timestamp_seconds > N` to detect a stale or offline gateway.'
+    )
+    metrics['skipped_fields'] = Counter(
+        name='ecowitt_skipped_fields',
+        documentation='Push body fields that could not be processed and were skipped, by field name (field="other" once MAX_SKIPPED_FIELDS distinct names have been seen). Use `increase(ecowitt_skipped_fields_total[10m]) > 0` to detect fields that fail, e.g. after a gateway firmware update.',
+        labelnames=['field']
     )
     # Seed with current time so the freshness alert does not fire immediately
     # after an exporter restart (it gets a grace period equal to the alert
